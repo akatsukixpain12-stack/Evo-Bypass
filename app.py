@@ -1,13 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 from bs4 import BeautifulSoup
 import re
 import time
+import os
 from datetime import datetime
 from functools import wraps
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='website', static_url_path='')
 CORS(app)
 
 # Stats tracking
@@ -339,19 +340,17 @@ class BypassService:
 
 @app.route('/')
 def home():
-    return jsonify({
-        'name': 'EVO Bypass API',
-        'version': '2.0.0',
-        'status': 'operational',
-        'endpoints': {
-            'health': '/api/health',
-            'stats': '/api/stats',
-            'bypass': '/api/bypass (POST)',
-            'supported': '/api/supported'
-        }
-    })
+    return send_from_directory('website', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    file_path = os.path.join('website', filename)
+    if os.path.isfile(file_path):
+        return send_from_directory('website', filename)
+    return jsonify({'success': False, 'error': 'Endpoint not found'}), 404
 
 @app.route('/api/health')
+@app.route('/health')
 def health():
     """Health check endpoint"""
     return jsonify({
@@ -362,6 +361,7 @@ def health():
     })
 
 @app.route('/api/stats')
+@app.route('/api/bypass/stats')
 def get_stats():
     """Get statistics"""
     success_rate = '0%'
@@ -382,6 +382,7 @@ def get_stats():
     })
 
 @app.route('/api/bypass', methods=['POST'])
+@app.route('/api/bypass/bypass', methods=['POST'])
 @rate_limit()
 def bypass():
     """Main bypass endpoint"""
@@ -456,10 +457,9 @@ def test():
 
 @app.errorhandler(404)
 def not_found(e):
-    return jsonify({
-        'success': False,
-        'error': 'Endpoint not found'
-    }), 404
+    if request.path.startswith('/api'):
+        return jsonify({'success': False, 'error': 'Endpoint not found'}), 404
+    return send_from_directory('website', 'index.html')
 
 @app.errorhandler(500)
 def server_error(e):
@@ -469,14 +469,15 @@ def server_error(e):
     }), 500
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 3000))
     print('=' * 50)
     print('   🚀 EVO BYPASS SERVER (Python/Flask)')
     print('=' * 50)
-    print(f'   Port: 3000')
-    print(f'   API: http://localhost:3000/api')
-    print(f'   Health: http://localhost:3000/api/health')
+    print(f'   Port: {port}')
+    print(f'   API: http://localhost:{port}/api')
+    print(f'   Health: http://localhost:{port}/api/health')
     print('=' * 50)
     print('   Server is ready!')
     print('=' * 50)
     
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
