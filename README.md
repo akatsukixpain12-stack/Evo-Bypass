@@ -1,6 +1,6 @@
 # 🚀 EVO Bypass
 
-**Free instant bypasser for Linkvertise, Lootlabs, Work.ink, Rekonise, Platoboost and 30+ more services**
+**Free instant link resolver for Linkvertise, Lootlabs, Work.ink, Rekonise, Platoboost and 100+ more services**
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- 🔗 **Link Bypasser** - Bypass 30+ services instantly
+- 🔗 **Link Resolver** - Resolve 100+ services through one API
 - 🐍 **Python/Flask Backend** - Fast, reliable, easy to maintain
 - 🎨 **Black & White UI** - Clean, modern, professional design
 - 🚀 **Lightning Fast** - Optimized for speed
@@ -34,7 +34,7 @@
 ✅ Sub2Unlock  
 ✅ Boost.ink  
 ✅ mBoost  
-✅ **30+ more via Universal bypass**
+✅ **100+ services mapped through the live resolver catalog**
 
 ---
 

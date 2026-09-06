@@ -1,5 +1,5 @@
-import SupportedPage from "@/app/supported/page";
+import { SupportedBrowser } from "@/components/sections/supported-browser";
 
 export default function FeaturesPage() {
-  return <SupportedPage />;
+  return <SupportedBrowser />;
 }

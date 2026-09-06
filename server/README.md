@@ -1,10 +1,10 @@
 # Zen Bypass Server
 
-Backend API server for the Zen Bypass service with support for 30+ link shortener and key system services.
+Backend API server for EVO Bypass with support for 100+ link shortener, key system, social, paste, and file-host services.
 
 ## Features
 
-- ✅ **30+ Supported Services** - Linkvertise, Lootlabs, Work.ink, Rekonise, Platoboost, and more
+- ✅ **100+ Supported Services** - Linkvertise, Lootlabs, Work.ink, Rekonise, Platoboost, and more
 - ✅ **Multiple Bypass Methods** - Service-specific + universal fallback
 - ✅ **Rate Limiting** - 100 requests per 15 minutes per IP
 - ✅ **Bulk Processing** - Process up to 50 URLs at once (API key required)
