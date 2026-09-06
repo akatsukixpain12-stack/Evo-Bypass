@@ -40,6 +40,17 @@
 
 ## 🚀 Quick Start
 
+### Browser extension (Chrome / Edge)
+
+The `extension` folder is a lightweight desktop popup: click the EVO icon, paste a link, and press **Go**.
+
+1. Start the API with `npm run dev:backend` (do not add a trailing `\`).
+2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
+3. Enable **Developer mode**, choose **Load unpacked**, and select the repository's `extension` folder.
+4. Pin **EVO Bypass**, click its icon, paste a link, and press **Go**.
+
+The extension also supports **Paste clipboard**, **Use current tab URL**, a `Ctrl+Shift+E` shortcut, and right-clicking any link to choose **Resolve with EVO Bypass**. Open **Settings** in the popup to change the API URL without editing code. The default API is `http://localhost:3000`.
+
 ### One-Click Start (Windows)
 ```bash
 # Just double-click:

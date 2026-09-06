@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EVO Bypass</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <div class="logo">E</div>
+        <div>
+          <p class="brand">EVO BYPASS</p>
+          <p id="status" class="status"><span></span> Checking resolver...</p>
+        </div>
+      </header>
+
+      <section class="intro">
+        <p class="eyebrow">QUICK RESOLVE</p>
+        <h1>Links in.<br><strong>Freedom out.</strong></h1>
+        <p class="muted">Paste a supported link and get the destination in seconds.</p>
+      </section>
+
+      <form id="form">
+        <label for="url">Link to resolve</label>
+        <div class="input-row">
+          <input id="url" type="url" placeholder="https://linkvertise.com/..." autocomplete="off" required>
+          <button id="resolve" type="submit">Go</button>
+        </div>
+        <div class="quick-actions">
+          <button id="current-tab" class="text-button" type="button">Use current tab URL</button>
+          <button id="paste" class="text-button" type="button">Paste clipboard</button>
+          <button id="settings" class="text-button" type="button">Settings</button>
+        </div>
+      </form>
+
+      <p id="message" class="message" role="status"></p>
+
+      <section id="result" class="result hidden">
+        <div class="result-top">
+          <span><i></i> Resolved via <b id="service"></b></span>
+          <span id="time"></span>
+        </div>
+        <a id="destination" target="_blank" rel="noreferrer"></a>
+        <div class="actions">
+          <button id="copy" type="button">Copy result</button>
+          <a id="open" target="_blank" rel="noreferrer">Open destination</a>
+        </div>
+      </section>
+
+      <footer>Private by default · 100+ services</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

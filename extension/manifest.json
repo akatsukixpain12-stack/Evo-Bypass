@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "EVO Bypass",
+  "version": "1.0.0",
+  "description": "Resolve supported links from a small desktop popup.",
+  "action": {
+    "default_title": "Open EVO Bypass",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "open-resolver": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "MacCtrl+Shift+E"
+      },
+      "description": "Open EVO Bypass"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "contextMenus",
+    "storage",
+    "clipboardWrite",
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://*/*",
+    "http://*/*"
+  ]
+}

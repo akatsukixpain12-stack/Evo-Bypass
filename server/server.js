@@ -16,7 +16,13 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: (origin, callback) => {
+    const allowedOrigin = process.env.CORS_ORIGIN || '*';
+    if (!origin || allowedOrigin === '*' || origin === allowedOrigin || origin.startsWith('chrome-extension://')) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin not allowed by CORS'));
+  },
   credentials: true
 }));
 
