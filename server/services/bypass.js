@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { detectService: detectCatalogService } = require('./catalog');
 
 class BypassService {
   static TIMEOUT = 30000; // 30 seconds
@@ -290,6 +291,7 @@ class BypassService {
    * Detect service from URL
    */
   static detectService(url) {
+    const catalogService = detectCatalogService(url);
     const urlLower = url.toLowerCase();
     
     if (urlLower.includes('linkvertise')) return 'Linkvertise';
@@ -304,7 +306,7 @@ class BypassService {
     if (urlLower.includes('mboost')) return 'mBoost';
     if (urlLower.includes('platoboost')) return 'Platoboost';
     
-    return 'Universal';
+    return catalogService.name;
   }
 
   /**

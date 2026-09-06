@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const BypassService = require('./services/bypass');
+const { services } = require('./services/catalog');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -214,22 +215,9 @@ app.post('/api/bypass/bulk', async (req, res) => {
 app.get('/api/supported', (req, res) => {
   res.json({
     success: true,
-    services: [
-      { name: 'Linkvertise', status: 'active', category: 'Link Shortener' },
-      { name: 'Work.ink', status: 'active', category: 'Link Shortener' },
-      { name: 'Lootlabs', status: 'active', category: 'Link Shortener' },
-      { name: 'Rekonise', status: 'active', category: 'Social Unlock' },
-      { name: 'Platoboost', status: 'active', category: 'Key System' },
-      { name: 'Admaven', status: 'active', category: 'Link Shortener' },
-      { name: 'Lockr.so', status: 'active', category: 'Link Shortener' },
-      { name: 'Shrtfly', status: 'active', category: 'Link Shortener' },
-      { name: 'Sub2Unlock', status: 'active', category: 'Social Unlock' },
-      { name: 'Boost.ink', status: 'active', category: 'Link Shortener' },
-      { name: 'mBoost', status: 'active', category: 'Link Shortener' },
-      { name: 'Universal', status: 'active', category: 'Fallback' }
-    ],
-    total: 30,
-    categories: ['Link Shortener', 'Social Unlock', 'Key System', 'Fallback']
+    services,
+    total: services.length,
+    categories: [...new Set(services.map((service) => service.category))]
   });
 });
 

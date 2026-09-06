@@ -3,8 +3,8 @@ import "@/app/globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 
 export const metadata: Metadata = {
-  title: "izen.lol style utility platform",
-  description: "Soft-light utility product shell with supported services, bot onboarding, pricing, and status pages."
+  title: "EVO Bypass — Link resolver network",
+  description: "A fast, privacy-first link resolver with coverage for 100+ services."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

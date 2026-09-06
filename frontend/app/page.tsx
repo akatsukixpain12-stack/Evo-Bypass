@@ -1,281 +1,245 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  Clipboard,
+  Command,
+  Globe2,
+  Link2,
+  Loader2,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Zap
+} from "lucide-react";
+import Link from "next/link";
+
+type Service = {
+  name: string;
+  domain: string;
+  category: string;
+  status: string;
+};
+
+type BypassResult = {
+  success: boolean;
+  destination?: string;
+  service?: string;
+  processingTime?: number;
+  error?: string;
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const fallbackServices: Service[] = [
+  { name: "Linkvertise", domain: "linkvertise.com", category: "Ad-link", status: "active" },
+  { name: "Lootlabs", domain: "lootlabs.gg", category: "Ad-link", status: "active" },
+  { name: "Work.ink", domain: "work.ink", category: "Ad-link", status: "active" },
+  { name: "Rekonise", domain: "rekonise.com", category: "Social unlock", status: "active" },
+  { name: "PlatoBoost", domain: "platoboost.com", category: "Key system", status: "active" },
+  { name: "Sub2Unlock", domain: "sub2unlock.com", category: "Social unlock", status: "active" }
+];
 
 export default function HomePage() {
-  const [url, setUrl] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [url, setUrl] = useState("");
+  const [result, setResult] = useState<BypassResult | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [stats, setStats] = useState({ total: 23387799 });
+  const [copied, setCopied] = useState(false);
+  const [services, setServices] = useState<Service[]>(fallbackServices);
+  const [total, setTotal] = useState(23387799);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    // Fetch stats
-    fetch('http://localhost:3000/api/stats')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setStats(data.stats);
-        }
+    Promise.all([
+      fetch(`${API_URL}/api/supported`).then((response) => response.json()),
+      fetch(`${API_URL}/api/stats`).then((response) => response.json())
+    ])
+      .then(([supported, stats]) => {
+        if (supported.success && supported.services?.length) setServices(supported.services);
+        if (stats.success && stats.stats?.total) setTotal(stats.stats.total);
       })
-      .catch(err => console.error('Stats error:', err));
+      .catch(() => undefined);
   }, []);
 
-  const handleBypass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!url) {
-      setError('Please enter a URL');
+  const filteredServices = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return services.slice(0, 12);
+    return services
+      .filter((service) => `${service.name} ${service.domain} ${service.category}`.toLowerCase().includes(normalized))
+      .slice(0, 12);
+  }, [query, services]);
+
+  async function handleBypass(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setResult(null);
+    setCopied(false);
+
+    try {
+      new URL(url);
+    } catch {
+      setError("Paste a complete link starting with https://");
       return;
     }
 
     setLoading(true);
-    setError('');
-    setResult(null);
-
     try {
-      const response = await fetch('http://localhost:3000/api/bypass', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
+      const response = await fetch(`${API_URL}/api/bypass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
       });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setResult(data);
-        setStats(prev => ({ ...prev, total: prev.total + 1 }));
-      } else {
-        setError(data.error || 'Bypass failed');
+      const data = (await response.json()) as BypassResult;
+      if (!response.ok || !data.success) {
+        setError(data.error || "This link could not be resolved.");
+        return;
       }
-    } catch (err) {
-      setError('Network error. Make sure the server is running.');
+      setResult(data);
+      setTotal((current) => current + 1);
+    } catch {
+      setError("The resolver is offline. Start the API server and try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
-  };
+  async function copyResult() {
+    if (!result?.destination) return;
+    await navigator.clipboard.writeText(result.destination);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent"></div>
-        
-        <div className="relative max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-            EVO BYPASS
-          </h1>
-          <p className="text-xl md:text-2xl text-gray mb-4">
-            Bypass 30+ Link Services Instantly
-          </p>
-          <p className="text-gray-dark mb-8">
-            Free • Fast • No Surveys • No Downloads
-          </p>
-
-          {/* Stats */}
-          <div className="flex justify-center gap-8 mb-12">
-            <div className="text-center">
-              <div className="text-3xl font-bold">{stats.total.toLocaleString()}</div>
-              <div className="text-sm text-gray">Links Bypassed</div>
+    <main className="overflow-hidden">
+      <section className="relative mx-auto max-w-[1320px] px-5 pb-24 pt-14 sm:px-8 lg:pt-24">
+        <div className="orb orb-cyan" />
+        <div className="orb orb-purple" />
+        <div className="relative grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr]">
+          <div>
+            <div className="eyebrow mb-7 w-fit">
+              <span className="status-dot" /> Resolver network online
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold">30+</div>
-              <div className="text-sm text-gray">Services</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold">99.9%</div>
-              <div className="text-sm text-gray">Uptime</div>
-            </div>
-          </div>
-
-          {/* Bypass Form */}
-          <form onSubmit={handleBypass} className="max-w-2xl mx-auto">
-            <div className="card-bw rounded-2xl p-8">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://linkvertise.com/123456/example"
-                className="w-full bg-black border border-white/20 rounded-xl px-6 py-4 text-white placeholder-gray-dark focus:outline-none focus:border-white/40 transition-all mb-4"
-                disabled={loading}
-              />
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 mb-4 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-
-              {result && result.success && (
-                <div className="bg-white/5 border border-white/20 rounded-xl p-4 mb-4 text-left">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray">Bypassed URL:</span>
-                    <span className="text-xs text-gray-dark">{result.service}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={result.destination}
-                      readOnly
-                      className="flex-1 bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(result.destination)}
-                      className="btn-secondary px-4 py-2 rounded-lg text-sm"
-                    >
-                      Copy
-                    </button>
-                    <a
-                      href={result.destination}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-primary px-4 py-2 rounded-lg text-sm"
-                    >
-                      Open
-                    </a>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-dark">
-                    Processed in {result.processingTime}ms
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || !url}
-                className="btn-primary w-full py-4 rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  'Bypass Link'
-                )}
-              </button>
-            </div>
-          </form>
-
-          {/* Popular Services */}
-          <div className="mt-12">
-            <p className="text-sm text-gray mb-4">SUPPORTED SERVICES</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {['Linkvertise', 'Lootlabs', 'Work.ink', 'Rekonise', 'Platoboost', 'Admaven', 'Lockr.so', 'Shrtfly'].map((service) => (
-                <span key={service} className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm">
-                  {service}
+            <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.065em] text-white sm:text-7xl lg:text-[6.8rem]">
+              Links in.
+              <span className="gradient-text block">Freedom out.</span>
+            </h1>
+            <p className="mt-8 max-w-xl text-lg leading-8 text-white/55">
+              EVO is a fast, privacy-first link resolver with coverage for
+              <span className="text-cyan-300"> 100+ services</span>. No ads, no
+              sign-ups, no maze.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3 text-sm text-white/60">
+              {["Live routing", "No link history", "API ready"].map((item) => (
+                <span key={item} className="chip">
+                  <Check className="h-3.5 w-3.5 text-emerald-300" /> {item}
                 </span>
               ))}
-              <Link href="/supported" className="px-4 py-2 bg-white text-black rounded-full text-sm font-semibold hover:bg-gray-light transition-colors">
-                +22 More
-              </Link>
             </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-4 rounded-[34px] bg-cyan-400/10 blur-3xl" />
+            <form onSubmit={handleBypass} className="glass-panel relative p-3 sm:p-4">
+              <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-white/35">
+                <Command className="h-4 w-4 text-cyan-300" /> Quick resolve
+                <span className="ml-auto rounded-md border border-white/10 px-2 py-1 text-[10px] tracking-normal text-white/35">EVO / 01</span>
+              </div>
+              <div className="p-2 sm:p-5">
+                <label htmlFor="url" className="mb-3 block text-sm text-white/55">Paste a gated link</label>
+                <div className="input-shell flex items-center gap-3">
+                  <Link2 className="ml-1 h-5 w-5 shrink-0 text-cyan-300" />
+                  <input
+                    id="url"
+                    type="url"
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder="https://linkvertise.com/..."
+                    disabled={loading}
+                    className="min-w-0 flex-1 bg-transparent py-4 text-sm text-white outline-none placeholder:text-white/25"
+                  />
+                  <button className="resolve-button" type="submit" disabled={loading || !url}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    {loading ? "Resolving" : "Resolve"}
+                  </button>
+                </div>
+                {error && <p className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p>}
+                {result?.destination && (
+                  <div className="result-panel mt-4">
+                    <div className="mb-3 flex items-center justify-between text-xs text-white/45">
+                      <span className="flex items-center gap-2"><span className="status-dot" /> Resolved via {result.service}</span>
+                      <span>{result.processingTime}ms</span>
+                    </div>
+                    <p className="break-all text-sm leading-6 text-white">{result.destination}</p>
+                    <div className="mt-4 flex gap-2">
+                      <button type="button" className="action-button" onClick={copyResult}>
+                        {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4" />}
+                        {copied ? "Copied" : "Copy"}
+                      </button>
+                      <a className="action-button flex-1 justify-center bg-white text-black hover:bg-cyan-100" href={result.destination} target="_blank" rel="noreferrer">
+                        Open destination <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+                <p className="mt-4 text-center text-xs text-white/30">Only use EVO with links you are authorized to access.</p>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-20 grid gap-3 sm:grid-cols-3">
+          {[
+            { icon: Globe2, value: `${services.length}+`, label: "services mapped" },
+            { icon: Zap, value: "< 2s", label: "average resolution" },
+            { icon: ShieldCheck, value: total.toLocaleString(), label: "links resolved" }
+          ].map(({ icon: Icon, value, label }) => (
+            <div key={label} className="metric-card">
+              <Icon className="h-5 w-5 text-cyan-300" />
+              <div><strong>{value}</strong><span>{label}</span></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-white/[0.025] px-5 py-20 sm:px-8">
+        <div className="mx-auto max-w-[1320px]">
+          <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div>
+              <p className="eyebrow mb-4 w-fit">The network</p>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Built for the long tail.</h2>
+              <p className="mt-4 max-w-lg text-white/45">From key systems to ad-links and file hosts, find your service in one resolver.</p>
+            </div>
+            <Link href="/supported" className="inline-flex items-center gap-2 text-sm text-cyan-300 hover:text-white">View full directory <ChevronRight className="h-4 w-4" /></Link>
+          </div>
+          <div className="mb-6 flex max-w-md items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+            <Search className="h-4 w-4 text-white/35" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search 100+ services..." className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredServices.map((service) => (
+              <div key={`${service.name}-${service.domain}`} className="service-card">
+                <div className="service-icon"><Globe2 className="h-4 w-4 text-cyan-300" /></div>
+                <div className="min-w-0"><p className="truncate font-medium text-white">{service.name}</p><p className="truncate text-xs text-white/35">{service.domain}</p></div>
+                <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_12px_#6ee7b7]" />
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-gradient-to-b from-transparent to-white/5">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-            Why Choose EVO Bypass?
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="card-bw rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Lightning Fast</h3>
-              <p className="text-gray">
-                Bypass links in seconds with our optimized infrastructure
-              </p>
-            </div>
-
-            <div className="card-bw rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">100% Secure</h3>
-              <p className="text-gray">
-                Your privacy matters. We don't store or track your links
-              </p>
-            </div>
-
-            <div className="card-bw rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Always Free</h3>
-              <p className="text-gray">
-                No hidden fees, no premium tiers. Free forever
-              </p>
-            </div>
-          </div>
-        </div>
+      <section className="mx-auto grid max-w-[1320px] gap-4 px-5 py-20 sm:px-8 md:grid-cols-3">
+        {[
+          { icon: Sparkles, title: "One clean pass", body: "Smart service detection picks the right resolver before the request leaves your browser." },
+          { icon: ShieldCheck, title: "Private by default", body: "We do not build a link history. Requests are processed and forgotten." },
+          { icon: Zap, title: "Made for speed", body: "A focused API and lightweight interface keep the path from paste to destination short." }
+        ].map(({ icon: Icon, title, body }) => (
+          <div key={title} className="feature-card"><Icon className="h-5 w-5 text-cyan-300" /><h3>{title}</h3><p>{body}</p></div>
+        ))}
       </section>
-
-      {/* Tools Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            More Tools
-          </h2>
-          <p className="text-gray mb-12">
-            Explore our collection of free online tools
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Link href="/tools/green-screen" className="card-bw rounded-2xl p-8 text-left hover:scale-105 transition-transform">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">Green Screen Remover</h3>
-                  <p className="text-gray">Remove green backgrounds from images instantly</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/tools" className="card-bw rounded-2xl p-8 text-left hover:scale-105 transition-transform">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">All Tools</h3>
-                  <p className="text-gray">Explore all our free online tools</p>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
+    </main>
   );
 }
