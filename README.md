@@ -51,6 +51,20 @@ The `extension` folder is a lightweight desktop popup: click the EVO icon, paste
 
 The extension also supports **Paste clipboard**, **Use current tab URL**, a `Ctrl+Shift+E` shortcut, and right-clicking any link to choose **Resolve with EVO Bypass**. Open **Settings** in the popup to change the API URL without editing code. The default API is `http://localhost:3000`.
 
+### Deploy the whole app on Netlify
+
+Netlify hosts the Next.js frontend and the API function from `netlify/functions/api.js`, so production only needs one Netlify site.
+
+1. Push this repository to GitHub and import it in Netlify.
+2. Leave the base directory empty and use the committed `netlify.toml` settings.
+3. Deploy. The website and API will share one domain:
+   - Website: `https://your-site.netlify.app`
+   - API health: `https://your-site.netlify.app/api/health`
+   - API bypass: `https://your-site.netlify.app/api/bypass`
+4. In the extension, open **Settings** and set the API URL to `https://your-site.netlify.app`.
+
+For local work, keep using `npm run dev:frontend` and `npm run dev:backend`.
+
 ### One-Click Start (Windows)
 ```bash
 # Just double-click:

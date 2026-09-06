@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { supportedGroups } from "@/lib/data";
 
 type Service = { name: string; domain: string; category: string; status: string };
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? "" : "http://localhost:3000");
 const fallbackServices: Service[] = supportedGroups.flatMap((group) =>
   group.items.map((item) => ({ name: item.name, domain: item.domains[0], category: group.name, status: "active" }))
 );

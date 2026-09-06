@@ -32,7 +32,7 @@ type BypassResult = {
   error?: string;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? "" : "http://localhost:3000");
 const fallbackServices: Service[] = [
   { name: "Linkvertise", domain: "linkvertise.com", category: "Ad-link", status: "active" },
   { name: "Lootlabs", domain: "lootlabs.gg", category: "Ad-link", status: "active" },
