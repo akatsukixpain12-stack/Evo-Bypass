@@ -1,39 +1,27 @@
-# EVO Bypass Deployment Guide
+# Vercel Deployment Guide
 
-EVO Bypass serves the existing Express API and Next.js frontend in **one Node.js process on one port**. Do not deploy `server/` and `frontend/` as separate services.
+Deploy the Next.js app in `frontend/` as a single Vercel project. Do not use the custom Express server as Vercel's entry point.
 
-## Deploy as one service
+## Vercel project settings
 
-Set the repository root as the service root.
+1. Import `akatsukixpain12-stack/Evo-Bypass` into Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Set Framework Preset to **Next.js**.
+4. Use the standard Next.js install/build settings; Vercel should run `npm install` and `npm run build` from `frontend/`.
+5. Add `API_KEY` under Environment Variables only if the bulk API is needed. Keep it server-side, without a `NEXT_PUBLIC_` prefix.
 
-- **Install command:** `npm install`
-- **Build command:** `npm run build`
-- **Start command:** `npm start`
+No separate API deployment, custom Express server, or API URL environment variable is needed. The frontend calls same-origin `/api/*) routes.
 
-Set `NODE_ENV=production` and let the host provide `PORT`. Use `/api/health` as the health check. The home page and API share one origin; a separate frontend URL and CORS server are not required. Keep `API_KEY` server-side if you use the bulk endpoint.
+## Verify after deployment
 
-## Local development
+- `/` — homepage
+- `/api/health` — API health
+- `/api/supported` — supported service directory
+- `/api/stats` — runtime counters
+- `/api/test` — simple API check
 
-```bash
-npm install
-npm run dev
-```
+## Important
 
-Open `http://localhost:3000`. On Windows, use `start.bat`.
+Vercel API routes run serverlessly. In-memory statistics may reset or vary between invocations. For persistent counters, connect a database or durable analytics service. Link resolution depends on the external provider and may fail if that provider changes its flow.
 
-## Troubleshooting
-
-- **Blank page:** deploy the repository root as a Node.js service, not as a static HTML site. Check build and startup logs.
-- **API offline:** open `/api/health` on the same domain.
-- **Port conflict:** stop any old EVO process before restarting.
-- **Provider error:** an operational API cannot guarantee every provider-specific link will continue to resolve.
-
-## API endpoints
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/health` | Health check |
-| GET | `/api/stats` | In-memory stats |
-| GET | `/api/supported` | Supported services |
-| POST | `/api/bypass` | Resolve one URL |
-| POST | `/api/bypass/bulk` | Bulk requests (API key required) |
+For traditional local/server hosting, the Express app in `server/` is still available separately. It is not needed for the Vercel deployment.
