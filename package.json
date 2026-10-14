@@ -7,9 +7,8 @@
     "server"
   ],
   "scripts": {
-    "dev": "npm-run-all --parallel dev:frontend dev:backend",
-    "dev:frontend": "npm --workspace frontend run dev",
-    "dev:backend": "npm --workspace server run dev",
+    "dev": "node server/server.js",
+    "start": "node server/server.js",
     "build": "npm --workspace frontend run build && npm --workspace server run build",
     "lint": "npm --workspace frontend run lint"
   },
