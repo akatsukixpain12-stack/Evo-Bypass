@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { navItems } from "@/lib/data";
-import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
