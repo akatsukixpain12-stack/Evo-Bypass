@@ -153,7 +153,7 @@ export default function HomePage() {
     } catch {
       setApiState("offline");
       setError(
-        "Could not reach the resolver API. Start the existing server on port 3000 or set NEXT_PUBLIC_API_URL to your deployed API address."
+        "Could not reach EVO's API routes on this deployment. Check the Vercel function logs and try again."
       );
     } finally {
       setLoading(false);
