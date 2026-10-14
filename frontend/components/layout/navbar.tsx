@@ -60,6 +60,9 @@ export function Navbar() {
             <CircleDollarSign className="h-4 w-4 text-violet-200" />
             Support
           </Link>
+          <Link className="nav-icon hidden sm:inline-flex" href="/auth" aria-label="Sign in" title="Sign in">
+            <LockKeyhole className="h-4 w-4" />
+          </Link>
           <Link className="nav-icon" href="/status" aria-label="API status" title="API status">
             <Activity className="h-4 w-4" />
           </Link>

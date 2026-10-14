@@ -1,316 +1,87 @@
-# 🚀 Complete Deployment Guide - EVO Bypass
+# EVO Bypass Deployment Guide
 
-## ✅ What's New
+This project already has one Express API in \`server/\` and one Next.js frontend in \`frontend/\`. Deploy those existing parts; do not create an additional proxy server.
 
-### Black & White Theme
-- Pure black (#000000) background
-- White (#FFFFFF) accents
-- Clean, professional design
-- High contrast for better readability
+## Local development
 
-### Powerful Server
-- Enhanced error handling
-- Better logging
-- Increased rate limits (200 req/15min)
-- Detailed stats tracking
-- Production-ready security
+Requires Node.js and npm.
 
-### Production-Ready UI
-- Real-time bypass functionality
-- Copy & open bypassed links
-- Live stats display
-- Responsive design
-- Loading states & error handling
-
----
-
-## 🏃 Quick Start
-
-### 1. Start Backend Server
-```bash
-cd server
+\`\`\`bash
 npm install
 npm run dev
-```
+\`\`\`
 
-Server runs at: **http://localhost:3000**
+- Frontend: \`http://localhost:3001\`
+- API: \`http://localhost:3000\`
+- API health check: \`http://localhost:3000/api/health\`
 
-### 2. Start Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
+The frontend uses port 3001 in development so it does not collide with the API on port 3000. On Windows, \`start.bat\` starts both.
 
-Frontend runs at: **http://localhost:3001**
+## Deploy the API
 
-### 3. Test the API
-```bash
-curl http://localhost:3000/api/health
-```
+Use Railway, Render, or another Node.js web-service host.
 
----
+- **Root directory:** \`server\`
+- **Build/install command:** \`npm install\`
+- **Start command:** \`npm start\`
 
-## 🌐 Deploy to Production
+Set the API service's environment variables:
 
-### Option 1: Vercel (Frontend) + Railway (Backend)
-
-#### Deploy Frontend to Vercel
-```bash
-cd frontend
-npm install -g vercel
-vercel login
-vercel
-```
-
-#### Deploy Backend to Railway
-1. Go to [railway.app](https://railway.app)
-2. Click "New Project" → "Deploy from GitHub"
-3. Select your repository
-4. Set root directory to `/server`
-5. Add environment variables:
-   ```
-   PORT=3000
-   NODE_ENV=production
-   CORS_ORIGIN=https://your-frontend.vercel.app
-   API_KEY=your-secret-key
-   ```
-
-### Option 2: Render (Full Stack)
-
-#### Backend on Render
-1. Go to [render.com](https://render.com)
-2. New → Web Service
-3. Connect GitHub repository
-4. Settings:
-   - **Root Directory**: `server`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-   - **Environment**: Node
-5. Add environment variables
-
-#### Frontend on Render
-1. New → Static Site
-2. Settings:
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `.next`
-
-### Option 3: VPS (DigitalOcean, AWS, etc.)
-
-```bash
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Clone repository
-git clone https://github.com/akatsukixpain12-stack/Evo-Bypass.git
-cd Evo-Bypass
-
-# Setup backend
-cd server
-npm install
-npm install -g pm2
-
-# Create .env file
-cat > .env << EOF
-PORT=3000
+\`\`\`env
 NODE_ENV=production
-CORS_ORIGIN=*
-API_KEY=your-secret-key
-EOF
+CORS_ORIGIN=https://your-frontend-domain.example
+API_KEY=choose-a-private-server-side-key
+\`\`\`
 
-# Start with PM2
-pm2 start server.js --name evo-bypass-api
-pm2 save
-pm2 startup
+Allow the host to provide \`PORT\` when it requires one. The API defaults to port 3000 for local development. Set \`CORS_ORIGIN\` to the exact browser-facing frontend origin; avoid using a wildcard for a public production API.
 
-# Setup frontend
-cd ../frontend
-npm install
-npm run build
+After deployment, check \`https://your-api-domain.example/api/health\`.
 
-# Start frontend
-pm2 start npm --name evo-bypass-web -- start
-pm2 save
-```
+## Deploy the Next.js frontend
 
----
+Deploy \`frontend/\` to Vercel or a host that supports Next.js.
 
-## 🔧 Environment Variables
+- **Root directory:** \`frontend\`
+- **Build command:** \`npm install && npm run build\`
+- **Start command for a Node web service:** \`npm start\`
 
-### Backend (.env)
-```env
-PORT=3000
-NODE_ENV=production
-CORS_ORIGIN=https://your-domain.com
-API_KEY=your-secret-api-key-here
-```
+Set the following environment variable **before the frontend build**:
 
-### Frontend (.env.local)
-```env
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
-```
+\`\`\`env
+NEXT_PUBLIC_SITE_NAME=Evo Bypass
+NEXT_PUBLIC_API_URL=https://your-api-domain.example
+\`\`\`
 
----
+Replace the example URL with the deployed API origin, with no trailing \`/api\` path. The frontend appends \`/api/health\`, \`/api/supported\`, \`/api/stats\`, and \`/api/bypass\` automatically. If the API address changes, update the environment variable and rebuild/redeploy the frontend.
 
-## 🔒 Security Checklist
+Also set the API's \`CORS_ORIGIN\` to your frontend domain. Do not set API secrets as \`NEXT_PUBLIC_*\` variables.
 
-- [ ] Change default API_KEY
-- [ ] Set proper CORS_ORIGIN
-- [ ] Enable HTTPS
-- [ ] Set up rate limiting
-- [ ] Configure firewall
-- [ ] Regular security updates
-- [ ] Monitor logs
-- [ ] Backup database (if using)
+## Root static page
 
----
+The root \`index.html\` is a standalone fallback page and uses the same API. When it is hosted on the same origin as the API, it calls \`/api\` on that origin. When it is hosted separately, set \`window.EVO_API_URL\` to the API origin in a script before the page's main script runs.
 
-## 📊 Monitoring
+## Troubleshooting
 
-### Check Server Health
-```bash
-curl https://your-api.com/api/health
-```
+### Frontend says the resolver is offline
 
-### View Stats
-```bash
-curl https://your-api.com/api/stats
-```
+1. Open \`/api/health\` on the deployed API domain.
+2. Check \`NEXT_PUBLIC_API_URL\` in the frontend hosting settings and rebuild the frontend after changing it.
+3. Check that the API's \`CORS_ORIGIN\` exactly matches the deployed frontend origin.
 
-### PM2 Monitoring (VPS)
-```bash
-pm2 status
-pm2 logs evo-bypass-api
-pm2 monit
-```
+### Port 3000 is already in use locally
 
----
+Keep the API on port 3000 and the frontend on port 3001. Stop any older development process using one of those ports before restarting.
 
-## 🐛 Troubleshooting
+### A particular link does not resolve
 
-### Server won't start
-```bash
-# Check if port is in use
-netstat -ano | findstr :3000
+Provider link flows change frequently. A healthy API does not mean every provider-specific link can be resolved; show the returned error and use the provider's supported/authorized flow when necessary.
 
-# Kill process
-taskkill /PID <PID> /F
+## Existing API endpoints
 
-# Restart server
-npm run dev
-```
-
-### CORS errors
-Update `server/.env`:
-```env
-CORS_ORIGIN=*
-```
-
-### Frontend can't connect to backend
-Update `frontend/app/page.tsx`:
-```typescript
-const API_URL = 'https://your-api-domain.com';
-```
-
-### Module not found
-```bash
-# Backend
-cd server
-rm -rf node_modules package-lock.json
-npm install
-
-# Frontend
-cd frontend
-rm -rf node_modules package-lock.json .next
-npm install
-```
-
----
-
-## 🚀 Performance Optimization
-
-### Backend
-- Use PM2 cluster mode
-- Enable compression
-- Add Redis caching
-- Use CDN for static assets
-
-### Frontend
-- Enable Next.js image optimization
-- Use static generation where possible
-- Implement lazy loading
-- Minimize bundle size
-
----
-
-## 📈 Scaling
-
-### Horizontal Scaling
-- Deploy multiple server instances
-- Use load balancer (Nginx, HAProxy)
-- Implement session management
-
-### Vertical Scaling
-- Upgrade server resources
-- Optimize database queries
-- Use caching strategies
-
----
-
-## 🔄 CI/CD Setup
-
-### GitHub Actions
-Create `.github/workflows/deploy.yml`:
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '18'
-      - run: cd server && npm install
-      - run: cd frontend && npm install && npm run build
-```
-
----
-
-## 📱 Mobile App (Optional)
-
-Convert to mobile app using:
-- React Native
-- Capacitor
-- Ionic
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Deploy to production
-2. ✅ Set up custom domain
-3. ✅ Configure SSL certificate
-4. ✅ Set up monitoring
-5. ✅ Add analytics
-6. ✅ Implement caching
-7. ✅ Add more tools
-
----
-
-## 📞 Support
-
-- **GitHub**: https://github.com/akatsukixpain12-stack/Evo-Bypass
-- **Issues**: https://github.com/akatsukixpain12-stack/Evo-Bypass/issues
-- **Docs**: Check README.md
-
----
-
-**Your production-ready EVO Bypass is ready to deploy! 🎉**
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | \`/api/health\` | API health |
+| GET | \`/api/stats\` | Live in-memory counters |
+| GET | \`/api/supported\` | Service catalog |
+| POST | \`/api/bypass\` | Resolve one URL |
+| POST | \`/api/bypass/bulk\` | Bulk requests (API key required) |

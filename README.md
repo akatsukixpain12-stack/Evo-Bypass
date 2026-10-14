@@ -1,250 +1,83 @@
-# 🚀 EVO Bypass
-
-**Free instant link resolver for Linkvertise, Lootlabs, Work.ink, Rekonise, Platoboost and 100+ more services**
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/akatsukixpain12-stack/Evo-Bypass)](https://github.com/akatsukixpain12-stack/Evo-Bypass/stargazers)
-
----
-
-## ✨ Features
-
-- 🔗 **Link Resolver** - Resolve 100+ services through one API
-- 🐍 **Python/Flask Backend** - Fast, reliable, easy to maintain
-- 🎨 **Black & White UI** - Clean, modern, professional design
-- 🚀 **Lightning Fast** - Optimized for speed
-- 🔒 **Secure** - Rate limiting, CORS, input validation
-- 📊 **Stats Tracking** - Real-time bypass statistics
-- 🌐 **API Ready** - RESTful API for integration
-
----
-
-## 🎯 Supported Services
-
-✅ Linkvertise  
-✅ Work.ink  
-✅ Lootlabs  
-✅ Rekonise  
-✅ Platoboost  
-✅ Admaven  
-✅ Lockr.so  
-✅ Shrtfly  
-✅ Sub2Unlock  
-✅ Boost.ink  
-✅ mBoost  
-✅ **100+ services mapped through the live resolver catalog**
-
----
-
-## 🚀 Quick Start
-
-### One-Click Start (Windows)
-```bash
-# Just double-click:
-start.bat
-```
-
-### Manual Start
-
-#### 1. Install Python
-Download from [python.org](https://python.org) (Python 3.8+)
-
-#### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-#### 3. Run Server
-```bash
-python app.py
-```
-
-#### 4. Open Frontend
-Open `index.html` in your browser
-
----
-
-## 📡 API Endpoints
-
-### Health Check
-```http
-GET /api/health
-```
-
-### Get Statistics
-```http
-GET /api/stats
-```
-
-### Bypass URL
-```http
-POST /api/bypass
-Content-Type: application/json
-
-{
-  "url": "https://linkvertise.com/123456/example"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "destination": "https://example.com/file.zip",
-  "service": "Linkvertise",
-  "processingTime": 1234
-}
-```
+# EVO Bypass
 
-### Supported Services
-```http
-GET /api/supported
-```
+EVO Bypass is a responsive link-resolver interface with a searchable service directory and a small JSON API.
 
----
+## What's included
 
-## 🐍 Why Python?
+- Gemini-inspired interface with springy motion and mobile-friendly controls
+- Link form with URL validation, visible loading/errors, result copy/open actions
+- Searchable directory loaded from the API
+- API health and live statistics display
+- Existing Express API under \`server/\` and Next.js frontend under \`frontend/\`
 
-| Feature | Python | Node.js |
-|---------|--------|---------|
-| Syntax | ✅ Cleaner | ❌ More verbose |
-| Web Scraping | ✅ BeautifulSoup | ❌ Cheerio |
-| Learning Curve | ✅ Easier | ❌ Harder |
-| Libraries | ✅ More | ❌ Less |
-| Deployment | ✅ Easy | ✅ Easy |
+The UI uses the existing API. It does not add another proxy or backend. Supported links can stop working when the provider changes its flow; the app reports resolver errors instead of pretending every link will succeed.
 
----
+## Run locally
 
-## 📁 Project Structure
+Install [Node.js](https://nodejs.org/) first.
 
-```
-Evo-Bypass/
-├── app.py              # Python Flask server
-├── requirements.txt    # Python dependencies
-├── start.bat          # One-click startup
-├── index.html         # Frontend (Black & White UI)
-├── PYTHON_SETUP.md    # Python setup guide
-└── README.md          # This file
-```
+### One command
 
----
+On Windows, double-click \`start.bat\`. It starts the existing API and frontend in separate terminal windows.
 
-## 🔧 Configuration
+### Manual setup
 
-### Change Port
-Edit `app.py`:
-```python
-app.run(host='0.0.0.0', port=5000, debug=True)
-```
+From the repository root:
 
-### Rate Limiting
-Edit `app.py`:
-```python
-@rate_limit(max_requests=200, window=900)  # 200 req per 15 min
-```
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
 
----
+Open the frontend at **http://localhost:3001**.
 
-## 🌐 Deploy to Production
+- Frontend: http://localhost:3001
+- Existing API: http://localhost:3000
+- Health check: http://localhost:3000/api/health
+- Supported services: http://localhost:3000/api/supported
+- Stats: http://localhost:3000/api/stats
 
-### Heroku
-```bash
-heroku create evo-bypass
-git push heroku main
-```
+The API and frontend use separate ports so they do not compete for port 3000.
 
-### PythonAnywhere
-1. Upload files
-2. Create web app
-3. Set WSGI to `app.py`
+## Configuration
 
-### Railway
-1. Connect GitHub
-2. Auto-deploy
+For local development, the frontend defaults to \`http://localhost:3000\`. For a separately deployed frontend and API, set \`NEXT_PUBLIC_API_URL\` to the public origin of your API **before building the frontend**.
 
-### VPS
-```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:3000 app:app
-```
+Create \`frontend/.env.local\` using \`frontend/.env.example\` as a template:
 
----
+\`\`\`env
+NEXT_PUBLIC_SITE_NAME=Evo Bypass
+NEXT_PUBLIC_API_URL=http://localhost:3000
+\`\`\`
 
-## 🐛 Troubleshooting
+For the deployed API, set \`CORS_ORIGIN\` to the exact frontend origin, for example \`https://your-site.vercel.app\`. Do not place private API keys in \`NEXT_PUBLIC_*\` variables.
 
-### Python not found
-Install from [python.org](https://python.org)
+## API endpoints
 
-### Module not found
-```bash
-pip install -r requirements.txt
-```
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | \`/api/health\` | Health check |
+| GET | \`/api/stats\` | Current in-memory stats |
+| GET | \`/api/supported\` | Service directory |
+| POST | \`/api/bypass\` | Resolve one URL |
+| POST | \`/api/bypass/bulk\` | Bulk endpoint requiring the configured API key |
 
-### Port already in use
-Change port in `app.py`
+Example request:
 
-### CORS errors
-Already handled with `flask-cors`
+\`\`\`bash
+curl -X POST http://localhost:3000/api/bypass \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://example.com/link"}'
+\`\`\`
 
----
+## Deploy
 
-## 📊 Performance
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md). For the simplest production setup, deploy the existing Node API as a web service and the Next.js frontend to a supported Next.js host. Set the API URL and CORS origin to match those public URLs.
 
-- **Response Time**: < 2 seconds
-- **Concurrent Requests**: 100+
-- **Memory Usage**: ~50MB
-- **Success Rate**: 95%+
+## Browser helper
 
----
+For browser-side automation, use the [official izen.lol userscript installation guide](https://izen.lol/blog/izen-userscript). EVO links to the official guide; it does not copy or host that userscript.
 
-## 🤝 Contributing
+## License
 
-Contributions are welcome!
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## ⚠️ Disclaimer
-
-This tool is for educational purposes only. Use responsibly and respect the terms of service of the websites you interact with.
-
----
-
-## 🌟 Star History
-
-If you find this project useful, please consider giving it a star! ⭐
-
----
-
-## 📧 Contact
-
-- **GitHub**: [@akatsukixpain12-stack](https://github.com/akatsukixpain12-stack)
-- **Repository**: [Evo-Bypass](https://github.com/akatsukixpain12-stack/Evo-Bypass)
-
----
-
-## 🎯 Quick Links
-
-- [Python Setup Guide](PYTHON_SETUP.md)
-- [Deployment Guide](DEPLOYMENT_GUIDE.md)
-- [API Documentation](#-api-endpoints)
-- [GitHub Repository](https://github.com/akatsukixpain12-stack/Evo-Bypass)
-
----
-
-**Made with ❤️ by akatsukixpain12-stack**
-
-**EVO Bypass - The fastest, most reliable link bypasser! 🚀**
+See [LICENSE](LICENSE).
