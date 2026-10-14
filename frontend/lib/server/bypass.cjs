@@ -1,352 +1,185 @@
-const axios = require('axios');
-const { detectService: detectCatalogService } = require('./catalog.cjs');
+const axios = require("axios");
+const net = require("node:net");
+const { detectService: detectCatalogService } = require("./catalog.cjs");
+
+const PROVIDER_API = "https://api.bypass.vip/bypass";
 
 class BypassService {
-  static TIMEOUT = 30000; // 30 seconds
+  static TIMEOUT = 25000;
 
   /**
-   * Main bypass function - attempts to bypass any supported link
+   * Resolves supported shortlinks through the provider's documented GET API.
+   *
+   * Important: this is a resolver, not a generic HTML scraper. Guessing the
+   * first href or scraping arbitrary user-supplied pages produced false
+   * positives and allowed the server to fetch attacker-controlled URLs.
    */
-  static async bypass(url) {
-    const startTime = Date.now();
-    
+  static async bypass(input) {
+    const startedAt = Date.now();
+    const base = {
+      success: false,
+      service: "Unknown",
+      processingTime: 0
+    };
+
     try {
-      // Validate URL
-      if (!url || !this.isValidUrl(url)) {
+      const parsed = this.parsePublicHttpUrl(input);
+      if (!parsed) {
         return {
-          success: false,
-          service: 'Unknown',
-          error: 'Invalid URL provided',
-          processingTime: Date.now() - startTime
+          ...base,
+          error: "Enter a public HTTP or HTTPS link."
         };
       }
 
-      // Detect service
-      const service = this.detectService(url);
+      const detected = this.detectService(parsed.toString());
+      const service = detected && detected.name !== "Direct resolver"
+        ? detected.name
+        : "Other / shortlink";
 
-      // Try bypass based on service
-      let result;
-
-      switch (service) {
-        case 'Linkvertise':
-          result = await this.bypassLinkvertise(url);
-          break;
-        case 'Work.ink':
-          result = await this.bypassWorkink(url);
-          break;
-        case 'Lootlabs':
-          result = await this.bypassLootlabs(url);
-          break;
-        case 'Rekonise':
-          result = await this.bypassRekonise(url);
-          break;
-        case 'Platoboost':
-          result = await this.bypassPlatoboost(url);
-          break;
-        default:
-          result = await this.universalBypass(url);
-      }
-
-      result.processingTime = Date.now() - startTime;
-      result.service = service;
-
-      return result;
-
-    } catch (error) {
-      return {
-        success: false,
-        service: 'Unknown',
-        error: error.message || 'Bypass failed',
-        processingTime: Date.now() - startTime
-      };
-    }
-  }
-
-  /**
-   * Linkvertise bypass implementation
-   */
-  static async bypassLinkvertise(url) {
-    try {
-      // Use public bypass API
-      const response = await axios.post('https://api.bypass.vip/bypass', {
-        url: url
-      }, {
+      const response = await axios.get(PROVIDER_API, {
+        // The published provider example uses GET ?url=..., not POST JSON.
+        params: { url: parsed.toString() },
         timeout: this.TIMEOUT,
         headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.data && response.data.destination) {
-        return {
-          success: true,
-          destination: response.data.destination,
-          service: 'Linkvertise',
-          processingTime: 0
-        };
-      }
-
-      throw new Error('No destination found');
-    } catch (error) {
-      return this.universalBypass(url);
-    }
-  }
-
-  /**
-   * Work.ink bypass implementation
-   */
-  static async bypassWorkink(url) {
-    try {
-      const response = await axios.get(url, {
-        timeout: this.TIMEOUT,
-        maxRedirects: 0,
+          Accept: "application/json",
+          "User-Agent": "EVO-Bypass/2.2 (+https://github.com/official-knightly/Evo-Bypass)"
+        },
+        // Let us format provider errors consistently below.
         validateStatus: () => true
       });
 
-      const destination = this.extractDestination(response.data);
+      const data = response.data && typeof response.data === "object"
+        ? response.data
+        : {};
 
-      if (destination) {
-        return {
-          success: true,
-          destination: destination,
-          service: 'Work.ink',
-          processingTime: 0
-        };
-      }
-
-      throw new Error('Could not extract destination');
-    } catch (error) {
-      return this.universalBypass(url);
-    }
-  }
-
-  /**
-   * Lootlabs bypass implementation
-   */
-  static async bypassLootlabs(url) {
-    try {
-      const id = this.extractLootlabsId(url);
-      
-      if (!id) {
-        throw new Error('Invalid Lootlabs URL');
-      }
-
-      const response = await axios.get(`https://api.lootlabs.gg/api/get-link/${id}`, {
-        timeout: this.TIMEOUT
-      });
-
-      if (response.data && response.data.url) {
-        return {
-          success: true,
-          destination: response.data.url,
-          service: 'Lootlabs',
-          processingTime: 0
-        };
-      }
-
-      throw new Error('No destination found');
-    } catch (error) {
-      return this.universalBypass(url);
-    }
-  }
-
-  /**
-   * Rekonise bypass implementation
-   */
-  static async bypassRekonise(url) {
-    try {
-      const response = await axios.get(url, {
-        timeout: this.TIMEOUT,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-
-      const html = response.data;
-      
-      // Try multiple extraction patterns
-      const patterns = [
-        /destination["\s:]+["']([^"']+)["']/i,
-        /target["\s:]+["']([^"']+)["']/i,
-        /redirect["\s:]+["']([^"']+)["']/i,
-        /url["\s:]+["']([^"']+)["']/i
-      ];
-
-      for (const pattern of patterns) {
-        const match = html.match(pattern);
-        if (match && match[1] && this.isValidUrl(match[1])) {
+      // Provider's documented success schema is { status: "success", result: "https://..." }.
+      const candidate = data.result || data.destination || data.url;
+      if (response.status >= 200 && response.status < 300 &&
+          (data.status === "success" || candidate)) {
+        const destination = this.parseDestination(candidate);
+        if (destination && destination.href !== parsed.href) {
           return {
             success: true,
-            destination: match[1],
-            service: 'Rekonise',
-            processingTime: 0
+            destination: destination.href,
+            service,
+            provider: "bypass.vip",
+            processingTime: Date.now() - startedAt
           };
         }
-      }
-
-      throw new Error('Could not extract destination');
-    } catch (error) {
-      return this.universalBypass(url);
-    }
-  }
-
-  /**
-   * Platoboost bypass implementation
-   */
-  static async bypassPlatoboost(url) {
-    return this.universalBypass(url);
-  }
-
-  /**
-   * Universal bypass - works with most services
-   */
-  static async universalBypass(url) {
-    try {
-      // Try multiple bypass APIs
-      const apis = [
-        'https://api.bypass.vip/bypass',
-        'https://bypass.pm/bypass',
-        'https://api-bypass.vercel.app/bypass'
-      ];
-
-      for (const api of apis) {
-        try {
-          const response = await axios.post(api, { url }, {
-            timeout: 10000,
-            headers: { 'Content-Type': 'application/json' }
-          });
-
-          if (response.data && (response.data.destination || response.data.result)) {
-            return {
-              success: true,
-              destination: response.data.destination || response.data.result,
-              service: 'Universal',
-              processingTime: 0
-            };
-          }
-        } catch {
-          continue;
+        if (destination && destination.href === parsed.href) {
+          return {
+            ...base,
+            service,
+            error: "The provider returned the original link; it was not bypassed.",
+            processingTime: Date.now() - startedAt
+          };
         }
-      }
-
-      // If all APIs fail, try direct extraction
-      const destination = await this.directExtraction(url);
-      
-      if (destination) {
         return {
-          success: true,
-          destination: destination,
-          service: 'Universal',
-          processingTime: 0
+          ...base,
+          service,
+          error: "The provider reported success but did not return a valid HTTP or HTTPS destination.",
+          processingTime: Date.now() - startedAt
         };
       }
 
-      throw new Error('All bypass methods failed');
-    } catch (error) {
+      const providerMessage = typeof data.message === "string" && data.message.trim()
+        ? data.message.trim()
+        : (response.status === 429
+          ? "Provider rate limit reached. Wait a little and try again."
+          : `Provider could not resolve this link (HTTP ${response.status}).`);
+
       return {
-        success: false,
-        service: 'Universal',
-        error: 'Unable to bypass this link',
-        processingTime: 0
+        ...base,
+        service,
+        error: this.limitError(providerMessage),
+        provider: "bypass.vip",
+        processingTime: Date.now() - startedAt
+      };
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? (error.code === "ECONNABORTED"
+          ? "The resolver timed out. Try again later."
+          : "The bypass provider is unavailable right now. Try again later.")
+        : (error instanceof Error ? error.message : "Bypass failed.");
+
+      return {
+        ...base,
+        error: this.limitError(message),
+        processingTime: Date.now() - startedAt
       };
     }
   }
 
-  /**
-   * Direct extraction from HTML
-   */
-  static async directExtraction(url) {
+  static parsePublicHttpUrl(input) {
+    if (typeof input !== "string" || !input.trim()) return null;
+    let url;
     try {
-      const response = await axios.get(url, {
-        timeout: this.TIMEOUT,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-
-      const html = response.data;
-
-      const patterns = [
-        /destination["\s:]+["']([^"']+)["']/i,
-        /target["\s:]+["']([^"']+)["']/i,
-        /redirect["\s:]+["']([^"']+)["']/i,
-        /url["\s:]+["']([^"']+)["']/i,
-        /href=["']([^"']+)["']/i
-      ];
-
-      for (const pattern of patterns) {
-        const match = html.match(pattern);
-        if (match && match[1] && this.isValidUrl(match[1])) {
-          return match[1];
-        }
-      }
-
+      url = new URL(input.trim());
+    } catch {
       return null;
+    }
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password) return null;
+
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") ||
+        hostname.endsWith(".local") || hostname.endsWith(".internal")) {
+      return null;
+    }
+
+    // Don't submit local/private IPs to a third-party resolver.
+    const ipType = net.isIP(hostname);
+    if (ipType === 4 && this.isPrivateIPv4(hostname)) return null;
+    if (ipType === 6 && this.isNonPublicIPv6(hostname)) return null;
+
+    return url;
+  }
+
+  static isPrivateIPv4(ip) {
+    const parts = ip.split(".").map(Number);
+    if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return true;
+    const [a, b] = parts;
+    return a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127);
+  }
+
+  static isNonPublicIPv6(ip) {
+    const normalized = ip.toLowerCase();
+    return normalized === "::" || normalized === "::1" ||
+      normalized.startsWith("fc") || normalized.startsWith("fd") ||
+      normalized.startsWith("fe8") || normalized.startsWith("fe9") ||
+      normalized.startsWith("fea") || normalized.startsWith("feb") ||
+      normalized.startsWith("::ffff:127.") || normalized.startsWith("::ffff:10.") ||
+      normalized.startsWith("::ffff:192.168.") || normalized.startsWith("2001:db8:");
+  }
+
+  static parseDestination(candidate) {
+    if (typeof candidate !== "string" || !candidate.trim()) return null;
+    try {
+      const url = new URL(candidate.trim());
+      if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+      if (url.username || url.password) return null;
+      return url;
     } catch {
       return null;
     }
   }
 
-  /**
-   * Detect service from URL
-   */
   static detectService(url) {
-    const catalogService = detectCatalogService(url);
-    const urlLower = url.toLowerCase();
-    
-    if (urlLower.includes('linkvertise')) return 'Linkvertise';
-    if (urlLower.includes('work.ink')) return 'Work.ink';
-    if (urlLower.includes('lootlabs') || urlLower.includes('loot-labs')) return 'Lootlabs';
-    if (urlLower.includes('admaven')) return 'Admaven';
-    if (urlLower.includes('lockr.so')) return 'Lockr.so';
-    if (urlLower.includes('shortfly') || urlLower.includes('shrtfly')) return 'Shrtfly';
-    if (urlLower.includes('sub2unlock')) return 'Sub2Unlock';
-    if (urlLower.includes('rekonise')) return 'Rekonise';
-    if (urlLower.includes('boost.ink')) return 'Boost.ink';
-    if (urlLower.includes('mboost')) return 'mBoost';
-    if (urlLower.includes('platoboost')) return 'Platoboost';
-    
-    return catalogService.name;
-  }
-
-  /**
-   * Validate URL
-   */
-  static isValidUrl(url) {
     try {
-      new URL(url);
-      return true;
+      return detectCatalogService(url);
     } catch {
-      return false;
+      return { name: "Direct resolver", domain: "*", category: "Fallback" };
     }
   }
 
-  /**
-   * Extract destination from HTML
-   */
-  static extractDestination(html) {
-    const patterns = [
-      /destination["\s:]+["']([^"']+)["']/i,
-      /target["\s:]+["']([^"']+)["']/i,
-      /redirect["\s:]+["']([^"']+)["']/i
-    ];
-
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match && match[1]) {
-        return match[1];
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Extract Lootlabs ID from URL
-   */
-  static extractLootlabsId(url) {
-    const match = url.match(/lootlabs\.gg\/([a-zA-Z0-9]+)/);
-    return match ? match[1] : null;
+  static limitError(message) {
+    // Keep external error text useful without returning unbounded provider output.
+    return String(message || "Unable to resolve this link.").replace(/[\r\n]+/g, " ").slice(0, 240);
   }
 }
 
