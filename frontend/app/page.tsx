@@ -32,7 +32,7 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  const links = rawLinks.split(/[\\n\\r\\t ,]+/).map((s) => s.trim()).filter(Boolean);
+  const links = rawLinks.split(/[\n\r\t ,]+/).map((s) => s.trim()).filter(Boolean);
   const uniqueLinks = [...new Set(links)];
   const validCount = uniqueLinks.filter((value) => {
     try { const u = new URL(value); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; }
