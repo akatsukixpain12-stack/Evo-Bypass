@@ -4,7 +4,7 @@ Deploy the Next.js app in `frontend/` as a single Vercel project. Do not use the
 
 ## Vercel project settings
 
-1. Import `akatsukixpain12-stack/Evo-Bypass` into Vercel.
+1. Import `official-knightly/Evo-Bypass` into Vercel.
 2. Set **Root Directory** to `frontend`.
 3. Set Framework Preset to **Next.js**.
 4. Use the standard Next.js install/build settings; Vercel should run `npm install` and `npm run build` from `frontend/`.
