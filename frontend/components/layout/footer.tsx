@@ -7,7 +7,6 @@ export function Footer() {
         <span className="inline-flex items-center gap-2"><Link2 className="h-3.5 w-3.5"/> EVO Bypass</span>
         <div className="flex flex-wrap items-center justify-center gap-5">
           <a href="https://buymeacoffee.com/Officialknightly" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5"><Coffee className="h-3.5 w-3.5"/> Donate</a>
-          <a href="https://linktr.ee/OfficialKnightly" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">Linktree <ExternalLink className="h-3 w-3"/></a>
           <a href="https://izen.lol/blog/izen-userscript" target="_blank" rel="noopener noreferrer">Userscript guide</a>
         </div>
       </div>
