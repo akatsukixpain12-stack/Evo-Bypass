@@ -54,7 +54,7 @@ class BypassService {
 
       // Provider's documented success schema is { status: "success", result: "https://..." }.
       const candidate = data.result || data.destination || data.url;
-      if (response.status >= 200 && response.status < 300 &&
+      if (response.status >= 200 && response.status < 300 && data.status !== "error" &&
           (data.status === "success" || candidate)) {
         const destination = this.parseDestination(candidate);
         if (destination && destination.href !== parsed.href) {
