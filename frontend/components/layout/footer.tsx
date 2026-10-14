@@ -1,4 +1,4 @@
-import { ExternalLink, Coffee, Link2 } from "lucide-react";
+import { Coffee, Link2 } from "lucide-react";
 
 export function Footer() {
   return (
