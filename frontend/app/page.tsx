@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   Check,
   Clipboard,
-  ExternalLink,
   Globe2,
   Link2,
   Loader2,
