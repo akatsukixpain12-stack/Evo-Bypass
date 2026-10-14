@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowUpRight, Check, Clipboard, Coffee, ExternalLink, Link2, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 
 type ItemResult = { input: string; success: boolean; destination?: string; service?: string; error?: string; processingTime?: number };
 const MAX_LINKS = 100;
 const DONATE_URL = "https://buymeacoffee.com/Officialknightly";
-const LINKTREE_URL = "https://linktr.ee/OfficialKnightly";
 
 export default function HomePage() {
   const [rawLinks, setRawLinks] = useState("");
@@ -15,7 +14,25 @@ export default function HomePage() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
-  const links = rawLinks.split(/[\n\r\t ,]+/).map((s) => s.trim()).filter(Boolean);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">("checking");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const checkApi = async () => {
+      try {
+        const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || data?.status !== "operational") throw new Error("Resolver API unavailable");
+        if (!controller.signal.aborted) setApiStatus("online");
+      } catch {
+        if (!controller.signal.aborted) setApiStatus("offline");
+      }
+    };
+    void checkApi();
+    return () => controller.abort();
+  }, []);
+
+  const links = rawLinks.split(/[\\n\\r\\t ,]+/).map((s) => s.trim()).filter(Boolean);
   const uniqueLinks = [...new Set(links)];
   const validCount = uniqueLinks.filter((value) => {
     try { const u = new URL(value); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; }
@@ -93,6 +110,12 @@ export default function HomePage() {
           <div className="text-center">
             <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Where should your link take you?</h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 sm:text-base">Paste one link or a list of links. Resolve up to 100 in one batch, with clear results for each.</p>
+            <div className="mt-5 flex justify-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-color)] bg-[color:var(--card-solid)] px-3 py-1.5 text-xs text-[color:var(--text-muted)]" role="status" aria-live="polite">
+                <span className={"h-2 w-2 rounded-full " + (apiStatus === "online" ? "bg-emerald-500" : apiStatus === "offline" ? "bg-rose-500" : "bg-amber-500")} />
+                {apiStatus === "online" ? "Resolver API online" : apiStatus === "offline" ? "Resolver API unavailable — check Vercel deployment" : "Connecting to resolver…"}
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="evo-input-card mx-auto mt-8 max-w-2xl p-3 sm:p-4">
@@ -140,7 +163,6 @@ export default function HomePage() {
             <a className="evo-text-link inline-flex items-center gap-2" href="https://izen.lol/blog/izen-userscript" target="_blank" rel="noopener noreferrer">Izen userscript guide <ExternalLink className="h-3.5 w-3.5"/></a>
             <a className="evo-text-link inline-flex items-center gap-2" href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey <ExternalLink className="h-3.5 w-3.5"/></a>
             <a className="evo-text-link inline-flex items-center gap-2" href={DONATE_URL} target="_blank" rel="noopener noreferrer"><Coffee className="h-4 w-4"/> Buy me a coffee</a>
-            <a className="evo-text-link inline-flex items-center gap-2" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Linktree <ExternalLink className="h-3.5 w-3.5"/></a>
           </div>
           <p className="mx-auto mt-8 max-w-xl text-center text-xs leading-5">EVO can only resolve links supported by its current providers. The 100-link batch is an app-side limit, not a guarantee that every provider will accept every request.</p>
         </div>
