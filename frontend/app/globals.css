@@ -517,8 +517,3 @@ a { -webkit-tap-highlight-color: transparent; }
   color: #29263a;
   background: #e8e0ff;
 }
-
-:root.light .evo-home .border-white\\/\\[0\\.08\\] {
-  border-color: rgba(61, 50, 91, 0.1);
-}
-
