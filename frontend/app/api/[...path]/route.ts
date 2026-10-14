@@ -44,6 +44,20 @@ function getPath(request: NextRequest) {
   return request.nextUrl.pathname.replace(/^\/api\/?/, "").replace(/\/+$/, "");
 }
 
+async function mapWithConcurrency<T, R>(items: T[], limit: number, worker: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const runWorker = async () => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), items.length) }, () => runWorker()));
+  return results;
+}
+
 function getStats() {
   return {
     total: stats.totalBypassed,
@@ -138,7 +152,20 @@ async function handle(request: NextRequest) {
       return json({ success: false, error: "Provide at most 100 URL strings per request" }, 400);
     }
 
-    const results = await Promise.all((body.urls as string[]).map((url) => BypassService.bypass(url)));
+    // Keep provider traffic bounded even when a caller submits the full 100-link batch.
+    // Results remain in input order while only three provider requests run at once.
+    const urls = body.urls as string[];
+    const results = await mapWithConcurrency(urls, 3, async (url) => {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return { success: false, service: "Unknown", error: "A valid HTTP or HTTPS URL is required" };
+        }
+        return await BypassService.bypass(parsed.toString());
+      } catch {
+        return { success: false, service: "Unknown", error: "A valid HTTP or HTTPS URL is required" };
+      }
+    });
     for (const result of results) {
       if (result.success) {
         stats.totalBypassed++;
