@@ -1,434 +1,149 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import {
-  Activity,
-  ArrowUpRight,
-  Check,
-  Clipboard,
-  ExternalLink,
-  Globe2,
-  Link2,
-  Loader2,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Zap
-} from "lucide-react";
-import Link from "next/link";
+import { useState, type FormEvent } from "react";
+import { ArrowUpRight, Check, Clipboard, Coffee, ExternalLink, Link2, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 
-type Service = {
-  name: string;
-  domain?: string;
-  category?: string;
-  status?: string;
-};
-
-type BypassResult = {
-  success: boolean;
-  destination?: string;
-  service?: string;
-  processingTime?: number;
-  error?: string;
-};
-
-type ApiState = "checking" | "online" | "offline";
-
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "")
-).replace(/\/+$/, "");
-
-function apiPath(path: string) {
-  return API_BASE + path;
-}
-
-const fallbackServices: Service[] = [
-  { name: "Linkvertise", domain: "linkvertise.com", category: "Ad-link" },
-  { name: "Lootlabs", domain: "lootlabs.gg", category: "Ad-link" },
-  { name: "Work.ink", domain: "work.ink", category: "Ad-link" },
-  { name: "Rekonise", domain: "rekonise.com", category: "Social unlock" },
-  { name: "Platoboost", domain: "platoboost.com", category: "Key system" },
-  { name: "Sub2Unlock", domain: "sub2unlock.com", category: "Social unlock" }
-];
+type ItemResult = { input: string; success: boolean; destination?: string; service?: string; error?: string; processingTime?: number };
+const MAX_LINKS = 100;
+const DONATE_URL = "https://buymeacoffee.com/Officialknightly";
+const LINKTREE_URL = "https://linktr.ee/OfficialKnightly";
 
 export default function HomePage() {
-  const [url, setUrl] = useState("");
-  const [result, setResult] = useState<BypassResult | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [rawLinks, setRawLinks] = useState("");
+  const [results, setResults] = useState<ItemResult[]>([]);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [services, setServices] = useState<Service[]>(fallbackServices);
-  const [total, setTotal] = useState<number | null>(null);
-  const [query, setQuery] = useState("");
-  const [apiState, setApiState] = useState<ApiState>("checking");
+  const links = rawLinks.split(/[\n\r\t ,]+/).map((s) => s.trim()).filter(Boolean);
+  const uniqueLinks = [...new Set(links)];
+  const validCount = uniqueLinks.filter((value) => {
+    try { const u = new URL(value); return u.protocol === "http:" || u.protocol === "https:"; } catch { return false; }
+  }).length;
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadApiInfo() {
-      try {
-        const [supportedResponse, statsResponse, healthResponse] = await Promise.all([
-          fetch(apiPath("/api/supported"), { signal: controller.signal }),
-          fetch(apiPath("/api/stats"), { signal: controller.signal }),
-          fetch(apiPath("/api/health"), { signal: controller.signal })
-        ]);
-
-        if (!supportedResponse.ok || !statsResponse.ok) {
-          throw new Error("The resolver API did not respond successfully.");
-        }
-
-        const [supported, stats] = await Promise.all([
-          supportedResponse.json(),
-          statsResponse.json()
-        ]);
-        const health = healthResponse.ok ? await healthResponse.json() : null;
-
-        if (controller.signal.aborted) return;
-
-        if (supported.success && Array.isArray(supported.services) && supported.services.length) {
-          setServices(supported.services);
-        }
-        if (stats.success && typeof stats.stats?.total === "number") {
-          setTotal(stats.stats.total);
-        }
-        setApiState(health?.status === "operational" ? "online" : "offline");
-      } catch {
-        if (!controller.signal.aborted) setApiState("offline");
-      }
-    }
-
-    void loadApiInfo();
-    return () => controller.abort();
-  }, []);
-
-  const filteredServices = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return services.slice(0, 12);
-    return services
-      .filter((service) =>
-        [service.name, service.domain || "", service.category || ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalized)
-      )
-      .slice(0, 12);
-  }, [query, services]);
-
-  async function handleBypass(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setResult(null);
-    setCopied(false);
-
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(url.trim());
-      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-        setError("Please use a link that starts with http:// or https://.");
-        return;
-      }
-    } catch {
-      setError("Paste a complete link starting with https://.");
+    if (running || uniqueLinks.length === 0) return;
+    if (uniqueLinks.length > MAX_LINKS) {
+      setResults([{ input: "", success: false, error: "Please submit no more than 100 links at once." }]);
       return;
     }
-
-    setLoading(true);
-    try {
-      const response = await fetch(apiPath("/api/bypass"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: parsedUrl.toString() })
-      });
-
-      const data = (await response.json().catch(() => null)) as BypassResult | null;
-      if (!response.ok || !data?.success || !data.destination) {
-        setError(data?.error || "This link could not be resolved. Check the link and try again.");
-        return;
+    setRunning(true);
+    setProgress(0);
+    setResults([]);
+    const output: ItemResult[] = new Array(uniqueLinks.length);
+    let cursor = 0;
+    let completed = 0;
+    const worker = async () => {
+      while (true) {
+        const index = cursor++;
+        if (index >= uniqueLinks.length) return;
+        const input = uniqueLinks[index];
+        try {
+          const parsed = new URL(input);
+          if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Only HTTP and HTTPS links are supported.");
+          const response = await fetch("/api/bypass", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: parsed.toString() })
+          });
+          const data = await response.json().catch(() => null);
+          output[index] = response.ok && data?.success && data?.destination
+            ? { input, success: true, destination: data.destination, service: data.service, processingTime: data.processingTime }
+            : { input, success: false, error: data?.error || "This link could not be resolved." };
+        } catch (error) {
+          output[index] = { input, success: false, error: error instanceof Error ? error.message : "Request failed." };
+        }
+        completed++;
+        setProgress(completed);
+        setResults(output.filter(Boolean));
       }
-
-      setResult(data);
-      setTotal((current) => (typeof current === "number" ? current + 1 : current));
-    } catch {
-      setApiState("offline");
-      setError(
-        "Could not reach EVO's API routes on this deployment. Check the Vercel function logs and try again."
-      );
+    };
+    try {
+      await Promise.all(Array.from({ length: Math.min(3, uniqueLinks.length) }, () => worker()));
     } finally {
-      setLoading(false);
+      setResults(output.filter(Boolean));
+      setRunning(false);
     }
   }
 
-  async function copyResult() {
-    if (!result?.destination) return;
+  async function copyAll() {
+    const text = results.filter((r) => r.success && r.destination).map((r) => r.destination).join("\n");
+    if (!text) return;
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(result.destination);
-      } else {
-        const field = document.createElement("textarea");
-        field.value = result.destination;
-        field.setAttribute("readonly", "true");
-        field.style.position = "fixed";
-        field.style.opacity = "0";
-        document.body.appendChild(field);
-        field.select();
-        const copiedSuccessfully = document.execCommand("copy");
-        field.remove();
-        if (!copiedSuccessfully) throw new Error("Clipboard unavailable");
-      }
+      await navigator.clipboard.writeText(text);
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
+      window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      setError("Copy was blocked by the browser. Select the result URL and copy it manually.");
+      setCopied(false);
     }
   }
+
+  const successCount = results.filter((item) => item.success).length;
+  const failedCount = results.filter((item) => !item.success).length;
 
   return (
     <PageShell>
-      <div className="evo-home relative isolate overflow-hidden">
-        <div className="evo-backdrop" aria-hidden="true">
-          <div className="evo-orb evo-orb-lilac floaty" />
-          <div className="evo-orb evo-orb-blue floaty floaty-delay" />
-          <div className="evo-orb evo-orb-pink floaty" />
-        </div>
-
-        <section className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-7 sm:pb-20 sm:pt-16 lg:pt-20">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="api-pill mx-auto w-fit" data-state={apiState}>
-              <span className="api-dot" />
-              <span>
-                {apiState === "checking"
-                  ? "Connecting to EVO"
-                  : apiState === "online"
-                    ? "Resolver connected"
-                    : "Resolver needs a connection"}
-              </span>
-              <Activity className="ml-1 h-3.5 w-3.5 opacity-60" />
-            </div>
-
-            <div className="mx-auto mt-8 grid h-16 w-16 place-items-center rounded-[24px] border border-white/10 bg-white/[0.07] shadow-[0_12px_48px_rgba(135,117,255,0.18)] floaty">
-              <div className="brand-spark">
-                <Sparkles className="h-7 w-7" />
-              </div>
-            </div>
-
-            <h1 className="hero-title mt-7 text-4xl font-semibold tracking-[-0.06em] sm:text-6xl lg:text-7xl">
-              Let your link
-              <span className="block gradient-text">take the short way.</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-white/55 sm:text-lg">
-              Paste a supported link and let EVO try to resolve the destination.
-              Clean interface, quick feedback, and no extra setup in this page.
-            </p>
-
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-              <span className="soft-chip"><Check className="h-3.5 w-3.5" /> One-link workflow</span>
-              <span className="soft-chip"><Zap className="h-3.5 w-3.5" /> Animated, responsive UI</span>
-              <span className="soft-chip"><ShieldCheck className="h-3.5 w-3.5" /> URL validation</span>
-            </div>
+      <main className="evo-minimal min-h-[78vh] px-4 pb-16 pt-14 sm:pt-24">
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="mb-10 flex items-center justify-center gap-3">
+            <div className="evo-logo"><Sparkles className="h-5 w-5" /></div>
+            <span className="text-xl font-semibold tracking-tight">EVO Bypass</span>
+          </div>
+          <div className="text-center">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Where should your link take you?</h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 sm:text-base">Paste one link or a list of links. Resolve up to 100 in one batch, with clear results for each.</p>
           </div>
 
-          <div className="relative mx-auto mt-10 max-w-3xl sm:mt-12">
-            <div className="composer-glow" aria-hidden="true" />
-            <form onSubmit={handleBypass} className="composer-card relative">
-              <div className="flex items-center gap-3 border-b border-white/[0.09] px-5 py-4 sm:px-7">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.07] text-violet-200">
-                  <Link2 className="h-4 w-4" />
+          <form onSubmit={handleSubmit} className="evo-input-card mx-auto mt-8 max-w-2xl p-3 sm:p-4">
+            <label className="sr-only" htmlFor="links">Links to resolve</label>
+            <textarea id="links" value={rawLinks} onChange={(event) => setRawLinks(event.target.value)} disabled={running} rows={4} placeholder="Paste your link(s) here… one per line" className="evo-textarea w-full resize-y px-3 py-3 text-base outline-none" />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3 px-2 pb-1">
+              <span className="text-xs">{uniqueLinks.length} / {MAX_LINKS} links · {validCount} valid</span>
+              <button className="evo-primary-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold" type="submit" disabled={running || validCount === 0 || uniqueLinks.length > MAX_LINKS}>
+                {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                {running ? `Resolving ${progress}/${uniqueLinks.length}` : "Resolve links"}
+              </button>
+            </div>
+            {uniqueLinks.length > MAX_LINKS && <p className="px-2 pt-2 text-sm" role="alert">The maximum is 100 unique links per batch.</p>}
+          </form>
+
+          {results.length > 0 && (
+            <section className="evo-results mx-auto mt-6 max-w-2xl p-4 sm:p-5" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Results</h2>
+                  <p className="mt-1 text-xs">{successCount} resolved · {failedCount} failed · {progress} of {uniqueLinks.length} processed</p>
                 </div>
-                <div className="min-w-0 text-left">
-                  <p className="text-sm font-semibold text-white">Quick resolve</p>
-                  <p className="mt-0.5 text-xs text-white/40">Paste a link to get started</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={copyAll} className="evo-secondary-button inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium"><Clipboard className="h-3.5 w-3.5"/>{copied ? "Copied" : "Copy successes"}</button>
+                  {!running && <button type="button" onClick={() => { setResults([]); setProgress(0); }} className="evo-secondary-button inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium"><RotateCcw className="h-3.5 w-3.5"/>Clear</button>}
                 </div>
-                <span className="ml-auto hidden rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35 sm:inline-flex">
-                  EVO / LINK
-                </span>
               </div>
-
-              <div className="p-4 sm:p-7">
-                <label htmlFor="source-url" className="mb-3 block text-left text-sm text-white/65">
-                  Your link
-                </label>
-                <div className="url-composer flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
-                  <Link2 className="ml-2 hidden h-5 w-5 shrink-0 text-violet-200/80 sm:block" />
-                  <input
-                    id="source-url"
-                    type="url"
-                    inputMode="url"
-                    autoComplete="url"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    placeholder="https://paste-your-link-here.com/…"
-                    disabled={loading}
-                    className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm text-white outline-none placeholder:text-white/30 sm:px-1"
-                  />
-                  <button className="resolve-button" type="submit" disabled={loading || !url.trim()}>
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                    {loading ? "Resolving…" : "Resolve link"}
-                    {!loading && <ArrowUpRight className="h-4 w-4" />}
-                  </button>
-                </div>
-
-                {error && (
-                  <div role="alert" className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/[0.08] px-4 py-3 text-left text-sm leading-6 text-rose-100">
-                    {error}
-                  </div>
-                )}
-
-                {result?.destination && (
-                  <div className="result-panel mt-4 text-left">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-white/45">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="api-dot" data-state="online" />
-                        Resolved by {result.service || "EVO"}
-                      </span>
-                      <span>{typeof result.processingTime === "number" ? result.processingTime + " ms" : "Complete"}</span>
+              <div className="mt-4 space-y-2">
+                {results.map((item, index) => (
+                  <article key={item.input + index} className="evo-result-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs">{item.success ? (item.service || "Resolved") : "Could not resolve"}</p>
+                      <p className="mt-1 break-all text-sm font-medium">{item.success ? item.destination : (item.input || item.error)}</p>
+                      {!item.success && item.input && <p className="mt-1 text-xs">{item.error}</p>}
                     </div>
-                    <p className="break-all text-sm leading-6 text-white">{result.destination}</p>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                      <button type="button" className="action-button" onClick={copyResult}>
-                        {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4" />}
-                        {copied ? "Copied" : "Copy URL"}
-                      </button>
-                      <a
-                        className="action-button action-button-primary flex-1 justify-center"
-                        href={result.destination}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open destination <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                <p className="mt-4 text-center text-xs leading-5 text-white/35">
-                  Only submit links you are authorized to access. Some providers may change how their links work.
-                </p>
+                    {item.success && item.destination && <a href={item.destination} target="_blank" rel="noopener noreferrer" aria-label="Open destination" className="evo-secondary-button shrink-0 rounded-full p-2"><ExternalLink className="h-4 w-4"/></a>}
+                    {item.success && <Check className="h-4 w-4 shrink-0"/>}
+                  </article>
+                ))}
               </div>
-            </form>
-          </div>
-
-          <div className="mx-auto mt-5 flex max-w-3xl flex-col items-center justify-center gap-2 text-center sm:flex-row">
-            <span className="text-xs text-white/35">Want browser-side help?</span>
-            <a
-              className="helper-link"
-              href="https://izen.lol/blog/izen-userscript"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Official izen.lol userscript guide <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-
-          <div className="mt-12 grid gap-3 sm:grid-cols-3">
-            <div className="metric-card spring-hover">
-              <div className="metric-icon"><Globe2 className="h-5 w-5" /></div>
-              <div className="min-w-0">
-                <strong>{services.length}{services.length === 6 ? "+" : ""}</strong>
-                <span>services in the directory</span>
-              </div>
-            </div>
-            <div className="metric-card spring-hover">
-              <div className="metric-icon"><Activity className="h-5 w-5" /></div>
-              <div className="min-w-0">
-                <strong className="metric-small">{apiState === "online" ? "Connected" : apiState === "checking" ? "Checking…" : "Offline"}</strong>
-                <span>live API status</span>
-              </div>
-            </div>
-            <div className="metric-card spring-hover">
-              <div className="metric-icon"><Zap className="h-5 w-5" /></div>
-              <div className="min-w-0">
-                <strong>{typeof total === "number" ? total.toLocaleString() : "—"}</strong>
-                <span>total links resolved (API)</span>
-              </div>
-            </div>
-          </div>
-
-          {apiState === "offline" && (
-            <p className="mx-auto mt-4 max-w-2xl text-center text-xs leading-6 text-white/40">
-              The page is ready, but its API is not connected. For local development, run the existing server on port 3000. For deployment, set <code className="rounded bg-white/10 px-1.5 py-0.5 text-white/65">NEXT_PUBLIC_API_URL</code> to your API origin.
-            </p>
+            </section>
           )}
-        </section>
 
-        <section className="border-y border-white/[0.08] bg-white/[0.018] px-4 py-16 sm:px-7 sm:py-20">
-          <div className="mx-auto max-w-6xl">
-            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-              <div>
-                <p className="eyebrow mb-4 w-fit">Service directory</p>
-                <h2 className="text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">Find your link service.</h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-white/45">
-                  Search the services supplied by the existing API. The list updates when the resolver responds.
-                </p>
-              </div>
-              <Link href="/supported" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-violet-200 transition hover:text-white">
-                View full directory <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="directory-search mt-7 flex max-w-lg items-center gap-3 px-4 py-3.5">
-              <Search className="h-4 w-4 shrink-0 text-white/40" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                aria-label="Search supported services"
-                placeholder="Search name, domain, or category…"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
-              />
-              {query && (
-                <button type="button" onClick={() => setQuery("")} className="text-xs text-white/45 hover:text-white">
-                  Clear
-                </button>
-              )}
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredServices.map((service) => (
-                <div key={service.name + "-" + (service.domain || "")} className="directory-card spring-hover">
-                  <div className="directory-icon"><Globe2 className="h-4 w-4" /></div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{service.name}</p>
-                    <p className="mt-1 truncate text-xs text-white/40">{service.domain || service.category || "Supported service"}</p>
-                  </div>
-                  <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-violet-300/80" />
-                </div>
-              ))}
-              {filteredServices.length === 0 && (
-                <div className="col-span-full rounded-2xl border border-white/10 px-5 py-8 text-center text-sm text-white/45">
-                  No services match “{query}”. Try another name or domain.
-                </div>
-              )}
-            </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
+            <a className="evo-text-link inline-flex items-center gap-2" href="https://izen.lol/blog/izen-userscript" target="_blank" rel="noopener noreferrer">Izen userscript guide <ExternalLink className="h-3.5 w-3.5"/></a>
+            <a className="evo-text-link inline-flex items-center gap-2" href={DONATE_URL} target="_blank" rel="noopener noreferrer"><Coffee className="h-4 w-4"/> Buy me a coffee</a>
+            <a className="evo-text-link inline-flex items-center gap-2" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Linktree <ExternalLink className="h-3.5 w-3.5"/></a>
           </div>
-        </section>
-
-        <section className="mx-auto grid max-w-6xl gap-3 px-4 py-14 sm:grid-cols-3 sm:px-7 sm:py-16">
-          {[
-            {
-              icon: Sparkles,
-              title: "A calmer workflow",
-              body: "One clear input, a visible loading state, and a result panel that is easy to use on mobile."
-            },
-            {
-              icon: ShieldCheck,
-              title: "Clear feedback",
-              body: "URL validation and readable error messages help distinguish a bad link from an API connection problem."
-            },
-            {
-              icon: Zap,
-              title: "No extra server",
-              body: "The interface uses the existing resolver API. It does not create another backend or proxy."
-            }
-          ].map(({ icon: Icon, title, body }) => (
-            <article key={title} className="feature-card spring-hover">
-              <div className="feature-icon"><Icon className="h-5 w-5" /></div>
-              <h3 className="mt-5 text-base font-semibold text-white">{title}</h3>
-              <p className="mt-2 text-sm leading-7 text-white/45">{body}</p>
-            </article>
-          ))}
-        </section>
-      </div>
+          <p className="mx-auto mt-8 max-w-xl text-center text-xs leading-5">EVO can only resolve links supported by its current providers. The 100-link batch is an app-side limit, not a guarantee that every provider will accept every request.</p>
+        </div>
+      </main>
     </PageShell>
   );
 }

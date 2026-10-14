@@ -1,71 +1,14 @@
-import { Bot, Link2, Mail, Send } from "lucide-react";
-import Link from "next/link";
-import { footerColumns } from "@/lib/data";
-import { siteConfig } from "@/lib/site";
+import { ExternalLink, Coffee, Link2 } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-[color:var(--border-color)]">
-      <div className="mx-auto grid w-[min(1180px,calc(100%-24px))] gap-10 py-12 md:grid-cols-[1.3fr_repeat(3,0.7fr)]">
-        <div>
-          <div className="flex items-center gap-3 text-lg font-semibold text-[color:var(--text-primary)]">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[color:var(--border-color)] bg-[color:var(--card-solid)]">
-              <Link2 className="h-4 w-4" />
-            </span>
-            {siteConfig.name}
-          </div>
-          <p className="mt-5 max-w-sm text-sm leading-8 text-[color:var(--text-muted)]">
-            Free instant bypasser for Linkvertise, Work.ink, Lootlabs, Admaven and key systems - no surveys, no downloads.
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Link
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[color:var(--border-color)] bg-[color:var(--card-solid)] text-[#5865f2]"
-              href={siteConfig.supportServerUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Bot className="h-5 w-5" />
-            </Link>
-            <Link
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[color:var(--border-color)] bg-[color:var(--card-solid)] text-[color:var(--text-muted)]"
-              href="/"
-            >
-              <Send className="h-5 w-5" />
-            </Link>
-            <Link
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[color:var(--border-color)] bg-[color:var(--card-solid)] text-[color:var(--text-muted)]"
-              href="/"
-            >
-              <Mail className="h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-
-        {footerColumns.map((column) => (
-          <div key={column.title}>
-            <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--text-primary)]">{column.title}</p>
-            <div className="mt-6 space-y-4">
-              {column.links.map((link) => (
-                <Link
-                  key={link.label}
-                  className="block text-sm text-[color:var(--text-muted)] transition hover:text-[color:var(--text-primary)]"
-                  href={link.label === "Discord" ? siteConfig.supportServerUrl : link.href}
-                  target={link.label === "Discord" ? "_blank" : undefined}
-                  rel={link.label === "Discord" ? "noreferrer" : undefined}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mx-auto flex w-[min(1180px,calc(100%-24px))] items-center justify-between border-t border-[color:var(--border-color)] py-6 text-sm text-[color:var(--text-muted)]">
-        <p>{siteConfig.name} (c) 2025-2026</p>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--status)]" />
-          Operational
+    <footer className="evo-footer">
+      <div className="mx-auto flex w-[min(1100px,calc(100%-28px))] flex-col items-center justify-between gap-3 py-6 text-xs sm:flex-row">
+        <span className="inline-flex items-center gap-2"><Link2 className="h-3.5 w-3.5"/> EVO Bypass</span>
+        <div className="flex flex-wrap items-center justify-center gap-5">
+          <a href="https://buymeacoffee.com/Officialknightly" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5"><Coffee className="h-3.5 w-3.5"/> Donate</a>
+          <a href="https://linktr.ee/OfficialKnightly" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">Linktree <ExternalLink className="h-3 w-3"/></a>
+          <a href="https://izen.lol/blog/izen-userscript" target="_blank" rel="noopener noreferrer">Userscript guide</a>
         </div>
       </div>
     </footer>
