@@ -39,7 +39,6 @@ Install a userscript manager in a compatible browser before installing a script.
 ## Links
 
 - [Buy Me a Coffee](https://buymeacoffee.com/Officialknightly)
-- [Official Knightly Linktree](https://linktr.ee/OfficialKnightly)
 
 ## License
 
