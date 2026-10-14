@@ -1,4 +1,6 @@
 const express = require('express');
+const next = require('next');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -9,6 +11,9 @@ const { services } = require('./services/catalog');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+const nextApp = next({ dev: !isProduction, dir: path.join(__dirname, '../frontend') });
+const nextHandler = nextApp.getRequestHandler();
 
 // Security & Middleware
 app.use(helmet({
@@ -232,14 +237,8 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    path: req.path
-  });
-});
+// Serve the Next.js UI through this same Express listener.
+app.all('*', (req, res) => nextHandler(req, res));
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -251,18 +250,21 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log('========================================');
-  console.log('   🚀 EVO BYPASS SERVER');
-  console.log('========================================');
-  console.log(`   Port: ${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   API: http://localhost:${PORT}/api`);
-  console.log(`   Health: http://localhost:${PORT}/api/health`);
-  console.log('========================================');
-  console.log('   Server is ready!');
-  console.log('========================================\n');
+// Prepare the frontend, then start one listener for the UI and API.
+nextApp.prepare().then(() => {
+  app.listen(PORT, () => {
+    console.log('========================================');
+    console.log('   EVO BYPASS — SINGLE SERVER');
+    console.log('========================================');
+    console.log(`   App:    http://localhost:${PORT}`);
+    console.log(`   API:    http://localhost:${PORT}/api`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+    console.log(`   Mode:   ${isProduction ? 'production' : 'development'}`);
+    console.log('========================================\\n');
+  });
+}).catch((error) => {
+  console.error('[STARTUP ERROR] Could not prepare the frontend:', error);
+  process.exit(1);
 });
 
 // Graceful shutdown
