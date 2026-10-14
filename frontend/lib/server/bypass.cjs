@@ -32,9 +32,21 @@ class BypassService {
       }
 
       const detected = this.detectService(parsed.toString());
-      const service = detected && detected.name !== "Direct resolver"
+      const service = detected && detected.name !== "Direct resolver" &&
+        detected.name !== "Other / unsupported"
         ? detected.name
         : "Other / shortlink";
+
+      // These systems depend on browser sessions or page-side interaction.
+      // Don't claim a server API can replace those steps.
+      if (detected.status === "browser-userscript") {
+        return {
+          ...base,
+          service,
+          error: "This key system needs a compatible browser userscript or page session; the EVO server API cannot complete it directly.",
+          processingTime: Date.now() - startedAt
+        };
+      }
 
       const response = await axios.get(PROVIDER_API, {
         // The published provider example uses GET ?url=..., not POST JSON.
