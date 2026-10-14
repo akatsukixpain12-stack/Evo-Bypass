@@ -1,51 +1,45 @@
 # EVO Bypass
 
-EVO Bypass is a responsive link-resolver interface and API built with Next.js. The Vercel deployment uses **one project and same-origin API routes**—no separately deployed Express server is required.
+EVO Bypass is a minimal, monochrome link-resolver interface and API built with Next.js. Its homepage supports one link or batches of up to 100 unique URLs, processed with limited concurrency and individual results.
 
 ## Deploy on Vercel
 
-1. Import this GitHub repository into Vercel.
-2. In **Project Settings → Build and Deployment**, set **Root Directory** to `frontend`.
-3. Leave the framework preset as **Next.js**.
-4. Deploy. Vercel should install from `frontend/package.json` and run the Next.js build automatically.
-5. If using the bulk endpoint, add `API_KEY` as a server-side Environment Variable in Vercel. Do not prefix it with `NEXT_PUBLIC_`.
-
-After deployment, test:
-- `https://your-project.vercel.app/`
-- `https://your-project.vercel.app/api/health`
-- `https://your-project.vercel.app/api/supported`
+1. Import this repository into Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Keep the framework preset as **Next.js** and use the standard Next.js build settings.
+4. Deploy. The UI and `/api/*) handlers deploy together as one Vercel project; no second Express server is required.
+5. If using the bulk API endpoint, configure `API_KEY` as a server-side Environment Variable.
 
 ## Local development
 
-From the `frontend` directory:
+From `frontend/`:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3001`. The API routes are served by the same Next.js app.
+## API checks
 
-## API endpoints
+- `/api/health`
+- `/api/supported`
+- `/api/stats`
+- `/api/test`
+- `POST /api/bypass`
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| GET | `/api/health` | Health check |
-| GET | `/api/stats` | Runtime stats (best-effort in serverless environments) |
-| GET | `/api/supported` | Supported service directory |
-| GET | `/api/test` | API smoke test |
-| POST | `/api/bypass` | Resolve one URL |
-| POST | `/api/bypass/bulk` | Bulk requests (requires server-side `API_KEY`) |
+The homepage batch limit of 100 is an application limit only. Individual providers can still impose their own restrictions, and no resolver can promise every link will work. Runtime counters are in-memory and may reset across Vercel serverless invocations.
 
-## Notes
+## Browser userscript
 
-- Vercel runs API handlers as serverless functions. In-memory counters are temporary and can reset between invocations; they are not a durable analytics database.
-- Provider link flows change frequently, so no resolver can guarantee every provider URL will always work.
-- The project also retains its Express server for traditional local/server hosting, but **do not configure that custom server as the Vercel entry point**.
+- [Izen official userscript guide](https://izen.lol/blog/izen-userscript)
+- [Tampermonkey official website](https://www.tampermonkey.net/)
 
-## Browser helper
+Install a userscript manager in a compatible browser before installing a script. EVO links to these official resources; it does not bundle third-party APKs or execute browser userscripts inside its server API.
 
-Use the [official izen.lol userscript guide](https://izen.lol/blog/izen-userscript). EVO links to the official guide rather than copying or hosting that userscript.
+## Links
+
+- [Buy Me a Coffee](https://buymeacoffee.com/Officialknightly)
+- [Official Knightly Linktree](https://linktr.ee/OfficialKnightly)
 
 ## License
 

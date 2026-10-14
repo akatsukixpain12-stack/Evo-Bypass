@@ -138,6 +138,7 @@ export default function HomePage() {
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
             <a className="evo-text-link inline-flex items-center gap-2" href="https://izen.lol/blog/izen-userscript" target="_blank" rel="noopener noreferrer">Izen userscript guide <ExternalLink className="h-3.5 w-3.5"/></a>
+            <a className="evo-text-link inline-flex items-center gap-2" href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey <ExternalLink className="h-3.5 w-3.5"/></a>
             <a className="evo-text-link inline-flex items-center gap-2" href={DONATE_URL} target="_blank" rel="noopener noreferrer"><Coffee className="h-4 w-4"/> Buy me a coffee</a>
             <a className="evo-text-link inline-flex items-center gap-2" href={LINKTREE_URL} target="_blank" rel="noopener noreferrer">Linktree <ExternalLink className="h-3.5 w-3.5"/></a>
           </div>
